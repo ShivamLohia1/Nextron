@@ -11,7 +11,7 @@ const Login = () => {
     const [error, setError] = useState('');
 
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         const domainCheck = validateEmailDomain(email);
@@ -19,13 +19,15 @@ const Login = () => {
             setError(domainCheck.error);
             return;
         }
-        const result = login(email, password);
+        const result = await login(email, password);
         if (result.success) {
             navigate('/');
         } else if (result.error === 'USER_NOT_FOUND') {
             setError('No account found with this email. Please sign up first.');
         } else if (result.error === 'WRONG_PASSWORD') {
             setError('Incorrect password. Please try again.');
+        } else {
+            setError(result.error || 'Login failed. Please try again.');
         }
     };
 
@@ -71,7 +73,7 @@ const Login = () => {
                     Don't have an account? <Link to="/signup" className="text-[var(--accent)] hover:underline">Sign Up</Link>
                 </div>
                 <div className="mt-4 text-center text-xs text-gray-600 font-mono">
-                    Try: admin@nexus.com / admin
+                    Try: admin@nextron.com / admin
                 </div>
             </div>
         </div>

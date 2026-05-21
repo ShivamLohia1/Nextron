@@ -12,21 +12,69 @@ export const StoreProvider = ({ children }) => {
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState(PRODUCTS_DATA);
 
+    // Fetch all products on load
+    useEffect(() => {
+        fetch('/api/products')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    setProducts(data);
+                }
+            })
+            .catch(console.error);
+    }, []);
+
     // UI State
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isWishlistOpen, setIsWishlistOpen] = useState(false);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isAdminMode, setIsAdminMode] = useState(false);
 
-    // Auth State (Mock)
-    const [user, setUser] = useState(null); // { name, email, role }
+    // Auth State
+    const [user, setUser] = useState(() => {
+        const savedUser = localStorage.getItem('nextron_user');
+        return savedUser ? JSON.parse(savedUser) : null;
+    });
+    
+    // Automatically set admin mode on load if user is admin
+    useEffect(() => {
+        if (user && user.role === 'admin') {
+            setIsAdminMode(true);
+        } else {
+            setIsAdminMode(false);
+        }
+    }, [user]);
+
+    // Fetch User Data (cart, wishlist, orders) from MongoDB
+    useEffect(() => {
+        if (user) {
+            const token = localStorage.getItem('nextron_token');
+            if (token) {
+                fetch('/api/user/data', {
+                    headers: { 'x-auth-token': token }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.cart) setCart(data.cart);
+                    if (data.wishlist) setWishlist(data.wishlist);
+                    if (data.orders) setOrders(data.orders);
+                })
+                .catch(console.error);
+            }
+        } else {
+            // Clear data if logged out
+            setCart([]);
+            setWishlist([]);
+            setOrders([]);
+        }
+    }, [user]);
 
     // Theme State
-    const [theme, setTheme] = useState(() => localStorage.getItem('nexus_theme') || 'dark');
+    const [theme, setTheme] = useState(() => localStorage.getItem('nextron_theme') || 'dark');
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('nexus_theme', theme);
+        localStorage.setItem('nextron_theme', theme);
     }, [theme]);
 
     const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -37,45 +85,129 @@ export const StoreProvider = ({ children }) => {
         navigate(`/products?category=${categoryId}`);
     };
 
+    const syncCart = async (newCart) => {
+        if (user) {
+            const token = localStorage.getItem('nextron_token');
+            if (token) {
+                await fetch('/api/user/cart', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+                    body: JSON.stringify({ cart: newCart })
+                }).catch(console.error);
+            }
+        }
+    };
+
+    const syncWishlist = async (newWishlist) => {
+        if (user) {
+            const token = localStorage.getItem('nextron_token');
+            if (token) {
+                await fetch('/api/user/wishlist', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+                    body: JSON.stringify({ wishlist: newWishlist })
+                }).catch(console.error);
+            }
+        }
+    };
+
     const addToCart = (product) => {
         const existing = cart.find(item => item.id === product.id);
+        let newCart;
         if (existing) {
-            setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+            newCart = cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
         } else {
-            setCart([...cart, { ...product, quantity: 1 }]);
+            newCart = [...cart, { ...product, quantity: 1 }];
         }
+        setCart(newCart);
         setIsCartOpen(true);
+        syncCart(newCart);
     };
 
     const removeFromCart = (productId) => {
-        setCart(cart.filter(item => item.id !== productId));
+        const newCart = cart.filter(item => item.id !== productId);
+        setCart(newCart);
+        syncCart(newCart);
     };
 
     const updateQuantity = (productId, quantity) => {
-        if (quantity === 0) removeFromCart(productId);
-        else setCart(cart.map(item => item.id === productId ? { ...item, quantity } : item));
+        if (quantity === 0) {
+            removeFromCart(productId);
+            return;
+        }
+        const newCart = cart.map(item => item.id === productId ? { ...item, quantity } : item);
+        setCart(newCart);
+        syncCart(newCart);
     };
 
     const addToWishlist = (product) => {
         if (!wishlist.find(item => item.id === product.id)) {
-            setWishlist([...wishlist, product]);
+            const newWishlist = [...wishlist, product];
+            setWishlist(newWishlist);
+            syncWishlist(newWishlist);
         }
     };
 
     const removeFromWishlist = (productId) => {
-        setWishlist(wishlist.filter(item => item.id !== productId));
+        const newWishlist = wishlist.filter(item => item.id !== productId);
+        setWishlist(newWishlist);
+        syncWishlist(newWishlist);
     };
 
-    const placeOrder = (orderData) => {
-        const newOrder = {
-            id: Date.now(),
-            items: [...cart],
+    const placeOrder = async (orderData) => {
+        const orderPayload = {
+            items: cart,
             total: cartTotal,
             customerInfo: orderData,
-            date: new Date().toISOString(),
+            date: new Date().toISOString()
+        };
+
+        if (user) {
+            const token = localStorage.getItem('nextron_token');
+            try {
+                const response = await fetch('/api/user/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+                    body: JSON.stringify(orderPayload)
+                });
+                if (response.ok) {
+                    const newOrder = await response.json();
+                    setOrders([newOrder, ...orders]);
+                    
+                    // Update local product stock
+                    setProducts(prevProducts => prevProducts.map(p => {
+                        const cartItem = cart.find(item => item.id === p.id);
+                        if (cartItem) {
+                            return { ...p, stock: p.stock - cartItem.quantity };
+                        }
+                        return p;
+                    }));
+
+                    setCart([]);
+                    return newOrder;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Fallback for guest or if request fails
+        const newOrder = {
+            id: Date.now(),
+            ...orderPayload,
             status: 'Processing'
         };
-        setOrders([...orders, newOrder]);
+        setOrders([newOrder, ...orders]);
+        
+        // Update local product stock
+        setProducts(prevProducts => prevProducts.map(p => {
+            const cartItem = cart.find(item => item.id === p.id);
+            if (cartItem) {
+                return { ...p, stock: p.stock - cartItem.quantity };
+            }
+            return p;
+        }));
+
         setCart([]);
         return newOrder;
     };
@@ -84,56 +216,74 @@ export const StoreProvider = ({ children }) => {
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
     // ─── Auth helpers ─────────────────────────────────────────────────────────
-    const USERS_KEY = 'nexus_users'; // { [email]: { name, password, role } }
-
-    const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
-    const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
     /**
      * Register a new user.
-     * @returns {{ success: boolean, error?: 'EMAIL_EXISTS' }}
+     * @returns {{ success: boolean, error?: string }}
      */
-    const signup = (email, password, name) => {
-        const users = getUsers();
-        if (users[email.toLowerCase()]) {
-            return { success: false, error: 'EMAIL_EXISTS' };
+    const signup = async (email, password, name) => {
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { success: false, error: data.error || 'Signup failed' };
+            }
+
+            // Save token and user details
+            localStorage.setItem('nextron_token', data.token);
+            localStorage.setItem('nextron_user', JSON.stringify(data.user));
+            
+            setUser(data.user);
+            return { success: true };
+        } catch (error) {
+            console.error('Signup error:', error);
+            return { success: false, error: 'Network error. Please try again later.' };
         }
-        users[email.toLowerCase()] = { name, password, role: 'user' };
-        saveUsers(users);
-        // Auto-login after signup
-        setUser({ name, email: email.toLowerCase(), role: 'user' });
-        setIsAdminMode(false);
-        return { success: true };
     };
 
     /**
      * Log in an existing user.
-     * @returns {{ success: boolean, error?: 'USER_NOT_FOUND' | 'WRONG_PASSWORD' }}
+     * @returns {{ success: boolean, error?: string }}
      */
-    const login = (email, password) => {
-        // Hardcoded admin account
-        if (email === 'admin@nexus.com' && password === 'admin') {
-            setUser({ name: 'Admin User', email, role: 'admin' });
-            setIsAdminMode(true);
+    const login = async (email, password) => {
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { success: false, error: data.error || 'Login failed' };
+            }
+
+            // Save token and user details
+            localStorage.setItem('nextron_token', data.token);
+            localStorage.setItem('nextron_user', JSON.stringify(data.user));
+
+            setUser(data.user);
             return { success: true };
+        } catch (error) {
+            console.error('Login error:', error);
+            return { success: false, error: 'Network error. Please try again later.' };
         }
-
-        const users = getUsers();
-        const record = users[email.toLowerCase()];
-
-        if (!record) {
-            return { success: false, error: 'USER_NOT_FOUND' };
-        }
-        if (record.password !== password) {
-            return { success: false, error: 'WRONG_PASSWORD' };
-        }
-
-        setUser({ name: record.name, email: email.toLowerCase(), role: record.role || 'user' });
-        setIsAdminMode(false);
-        return { success: true };
     };
 
     const logout = () => {
+        localStorage.removeItem('nextron_token');
+        localStorage.removeItem('nextron_user');
         setUser(null);
         setIsAdminMode(false);
     };

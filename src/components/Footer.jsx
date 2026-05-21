@@ -7,7 +7,7 @@ const Footer = () => {
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                 <div>
                     <Link to="/" className="text-3xl font-black tracking-tighter mb-6 block">
-                        NEXUS<span className="text-[var(--accent)]">.</span>
+                        NEXTRON<span className="text-[var(--accent)]">.</span>
                     </Link>
                     <p className="text-gray-400 text-sm leading-relaxed mb-6">
                         Pioneering the future of consumer electronics.
@@ -63,7 +63,7 @@ const Footer = () => {
             </div>
 
             <div className="max-w-7xl mx-auto px-6 pt-8 border-t border-[var(--border)] flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 font-mono">
-                <p>&copy; 2026 NEXUS. All rights reserved.</p>
+                <p>&copy; 2026 NEXTRON. All rights reserved.</p>
                 <div className="flex gap-8 mt-4 md:mt-0">
                     <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                     <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 
 const Navbar = () => {
@@ -22,13 +22,14 @@ const Navbar = () => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-12">
                         <Link to="/" className="text-2xl font-black tracking-tighter cursor-pointer glitch">
-                            NEXUS<span className="text-[var(--accent)]">.</span>
+                            NEXTRON<span className="text-[var(--accent)]">.</span>
                         </Link>
                         <div className="hidden md:flex space-x-8 font-mono text-sm">
-                            <Link to="/" className="hover:text-[var(--accent)] transition-colors">HOME</Link>
-                            <Link to="/products" className="hover:text-[var(--accent)] transition-colors">ALL PRODUCTS</Link>
-                            <Link to="/new-arrivals" className="hover:text-[var(--accent)] transition-colors">NEW ARRIVALS</Link>
-                            <Link to="/about" className="hover:text-[var(--accent)] transition-colors">ABOUT</Link>
+                            <NavLink to="/" end className={({ isActive }) => `hover:text-[var(--accent)] transition-colors ${isActive ? 'text-[var(--accent)]' : ''}`}>HOME</NavLink>
+                            <NavLink to="/products" className={({ isActive }) => `hover:text-[var(--accent)] transition-colors ${isActive ? 'text-[var(--accent)]' : ''}`}>ALL PRODUCTS</NavLink>
+                            <NavLink to="/trending" className={({ isActive }) => `hover:text-[var(--accent)] transition-colors ${isActive ? 'text-[var(--accent)]' : ''}`}>TRENDING</NavLink>
+                            <NavLink to="/new-arrivals" className={({ isActive }) => `hover:text-[var(--accent)] transition-colors ${isActive ? 'text-[var(--accent)]' : ''}`}>NEW ARRIVALS</NavLink>
+                            <NavLink to="/about" className={({ isActive }) => `hover:text-[var(--accent)] transition-colors ${isActive ? 'text-[var(--accent)]' : ''}`}>ABOUT</NavLink>
                         </div>
                     </div>
                     <div className="flex items-center space-x-6">

@@ -16,6 +16,7 @@ import ProductDetails from './pages/ProductDetails';
 import Contact from './pages/Contact';
 import MysteryDrop from './pages/MysteryDrop';
 import Profile from './pages/Profile';
+import Trending from './pages/Trending';
 import Footer from './components/Footer';
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/new-arrivals" element={<MysteryDrop />} />
+        <Route path="/trending" element={<Trending />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
 

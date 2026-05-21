@@ -11,7 +11,7 @@ const Signup = () => {
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
@@ -29,11 +29,13 @@ const Signup = () => {
             return;
         }
 
-        const result = signup(formData.email, formData.password, formData.name);
+        const result = await signup(formData.email, formData.password, formData.name);
         if (result.success) {
             navigate('/');
         } else if (result.error === 'EMAIL_EXISTS') {
             setError('An account with this email already exists. Please log in instead.');
+        } else {
+            setError(result.error || 'Signup failed. Please try again.');
         }
     };
 
@@ -70,7 +72,7 @@ const Signup = () => {
                             value={formData.email}
                             onChange={handleChange}
                             className="w-full bg-[var(--primary)] border border-[var(--border)] rounded-lg px-4 py-3 outline-none focus:border-[var(--accent)] transition-colors"
-                            placeholder="user@nexus.com"
+                            placeholder="user@nextron.com"
                             required
                         />
                     </div>

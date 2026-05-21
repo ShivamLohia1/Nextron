@@ -14,12 +14,12 @@ const CheckoutModal = () => {
 
     const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (step < 3) {
             setStep(step + 1);
         } else {
-            placeOrder(formData);
+            await placeOrder(formData);
             setOrderComplete(true);
             setTimeout(() => {
                 setIsCheckoutOpen(false);
